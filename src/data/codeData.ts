@@ -1,12 +1,37 @@
-import { LanguageCodeSet, AnatomyPoint, ModuleItem } from '../types';
+import { LanguageCodeSet, AnatomyPoint, ModuleItem, Language } from '../types';
 
-export const JAVA_ANATOMY_POINTS: AnatomyPoint[] = [
-  { key: 'mask', title: 'Polymorphic Mask (implements Target)', line: 10, role: 'Implements PaymentProcessor so caller is unaware of wrapper' },
-  { key: 'composition', title: 'Composition Reference (HAS-A adaptee)', line: 12, role: 'Maintains private reference to legacy service via DI' },
-  { key: 'translation', title: 'Data Incompatibility Translation', line: 20, role: 'Translates double dollars to integer cents via Math.round' },
-  { key: 'delegation', title: 'Adaptee Method Delegation', line: 21, role: 'Forwards converted parameters to legacy vendor method' },
-  { key: 'canonical', title: 'Return Value Canonicalization', line: 22, role: 'Normalizes boolean or raw vendor status into modern PaymentResult' },
-];
+export const LANGUAGE_ANATOMY_POINTS: Record<Language, AnatomyPoint[]> = {
+  java: [
+    { key: 'mask', title: 'Polymorphic Mask (implements Target)', line: 10, role: 'Implements PaymentProcessor so caller is unaware of wrapper' },
+    { key: 'composition', title: 'Composition Reference (HAS-A adaptee)', line: 12, role: 'Maintains private reference to legacy service via DI' },
+    { key: 'translation', title: 'Data Incompatibility Translation', line: 20, role: 'Translates double dollars to integer cents via Math.round' },
+    { key: 'delegation', title: 'Adaptee Method Delegation', line: 21, role: 'Forwards converted parameters to legacy vendor method' },
+    { key: 'canonical', title: 'Return Value Canonicalization', line: 22, role: 'Normalizes boolean or raw vendor status into modern PaymentResult' },
+  ],
+  python: [
+    { key: 'mask', title: 'Polymorphic Mask (subclasses Target)', line: 10, role: 'Inherits PaymentProcessor abstract base class for caller typing' },
+    { key: 'composition', title: 'Composition Reference (HAS-A adaptee)', line: 12, role: 'Takes legacy service instance through constructor injection' },
+    { key: 'translation', title: 'Data Incompatibility Translation', line: 17, role: 'Converts float dollars to int cents: int(round(amount * 100))' },
+    { key: 'delegation', title: 'Adaptee Method Delegation', line: 18, role: 'Dispatches execution to legacy execute_tx(cents, currency="USD")' },
+    { key: 'canonical', title: 'Return Value Canonicalization', line: 19, role: 'Wraps raw boolean result into domain PaymentResult dataclass' },
+  ],
+  typescript: [
+    { key: 'mask', title: 'Polymorphic Mask (implements Target)', line: 5, role: 'Implements PaymentProcessor interface for compile-time contract adherence' },
+    { key: 'composition', title: 'Composition Reference (HAS-A adaptee)', line: 7, role: 'Holds private readonly reference to LegacyBillingSDK' },
+    { key: 'translation', title: 'Data Incompatibility Translation', line: 15, role: 'Calculates integer cents: Math.round(amount * 100)' },
+    { key: 'delegation', title: 'Adaptee Method Delegation', line: 16, role: 'Awaits legacy chargeCustomer(cents, "USD") async call' },
+    { key: 'canonical', title: 'Return Value Canonicalization', line: 17, role: 'Constructs canonical PaymentResult object with timestamp' },
+  ],
+  csharp: [
+    { key: 'mask', title: 'Polymorphic Mask (implements Target)', line: 4, role: 'Implements IPaymentProcessor for dependency injection registration' },
+    { key: 'composition', title: 'Composition Reference (HAS-A adaptee)', line: 6, role: 'Private readonly field storing LegacyPaymentService dependency' },
+    { key: 'translation', title: 'Data Incompatibility Translation', line: 16, role: 'Converts decimal amount to 32-bit int cents: (int)Math.Round(amount * 100m)' },
+    { key: 'delegation', title: 'Adaptee Method Delegation', line: 17, role: 'Awaits _legacyService.MakePaymentAsync(cents, "USD")' },
+    { key: 'canonical', title: 'Return Value Canonicalization', line: 18, role: 'Wraps boolean into modern immutable PaymentResult record' },
+  ],
+};
+
+export const JAVA_ANATOMY_POINTS: AnatomyPoint[] = LANGUAGE_ANATOMY_POINTS.java;
 
 export const CODE_DATA: Record<string, LanguageCodeSet> = {
   java: {
@@ -278,7 +303,15 @@ export const CODE_DATA: Record<string, LanguageCodeSet> = {
           { num: 3, code: '' },
           { num: 4, code: 'class PaymentProcessor(ABC):' },
           { num: 5, code: '    @abstractmethod' },
-          { num: 6, code: '    def pay(self, amount: float) -> "PaymentResult":' },
+          {
+            num: 6,
+            code: '    def pay(self, amount: float) -> "PaymentResult":',
+            annotation: {
+              badge: 'Target Protocol',
+              title: 'Abstract Client Contract',
+              description: 'Defines the clean target protocol that checkout callers rely on, accepting standard float dollar amounts.',
+            }
+          },
           { num: 7, code: '        pass' }
         ]
       },
@@ -289,7 +322,15 @@ export const CODE_DATA: Record<string, LanguageCodeSet> = {
         lines: [
           { num: 1, code: '# Third-party proprietary banking SDK' },
           { num: 2, code: 'class LegacyPaymentGateway:' },
-          { num: 3, code: '    def execute_tx(self, amount_in_cents: int, currency: str = "USD") -> bool:' },
+          {
+            num: 3,
+            code: '    def execute_tx(self, amount_in_cents: int, currency: str = "USD") -> bool:',
+            annotation: {
+              badge: 'Incompatible Method',
+              title: 'Legacy Vendor Signature',
+              description: 'Requires integer cents and currency string. Direct invocation by client would violate separation of concerns.',
+            }
+          },
           { num: 4, code: '        print(f"[LegacySDK] Charge: {amount_in_cents} {currency}")' },
           { num: 5, code: '        return amount_in_cents > 0' }
         ]
@@ -413,7 +454,15 @@ export const CODE_DATA: Record<string, LanguageCodeSet> = {
           { num: 4, code: '}' },
           { num: 5, code: '' },
           { num: 6, code: 'export interface PaymentProcessor {' },
-          { num: 7, code: '  pay(amount: number): Promise<PaymentResult>;' },
+          {
+            num: 7,
+            code: '  pay(amount: number): Promise<PaymentResult>;',
+            annotation: {
+              badge: 'Target Protocol',
+              title: 'Modern Async Client Interface',
+              description: 'Standard TypeScript contract returning Promise<PaymentResult> for non-blocking payment processing.',
+            }
+          },
           { num: 8, code: '}' }
         ]
       },
@@ -424,7 +473,15 @@ export const CODE_DATA: Record<string, LanguageCodeSet> = {
         lines: [
           { num: 1, code: '// Legacy Node module (v1.2.0, year 2014)' },
           { num: 2, code: 'export class LegacyBillingSDK {' },
-          { num: 3, code: '  public async chargeCustomer(cents: number, cur: string): Promise<boolean> {' },
+          {
+            num: 3,
+            code: '  public async chargeCustomer(cents: number, cur: string): Promise<boolean> {',
+            annotation: {
+              badge: 'Incompatible Method',
+              title: 'Legacy SDK Method',
+              description: 'Requires integer cents and separate currency code. Unsuitable for modern domain services without an adapter.',
+            }
+          },
           { num: 4, code: '    // Old SOAP/XML or binary wire protocol' },
           { num: 5, code: '    return cents > 0;' },
           { num: 6, code: '  }' },
@@ -551,7 +608,15 @@ export const CODE_DATA: Record<string, LanguageCodeSet> = {
           { num: 4, code: '' },
           { num: 5, code: 'public interface IPaymentProcessor' },
           { num: 6, code: '{' },
-          { num: 7, code: '    Task<PaymentResult> PayAsync(decimal amount);' },
+          {
+            num: 7,
+            code: '    Task<PaymentResult> PayAsync(decimal amount);',
+            annotation: {
+              badge: 'Target Protocol',
+              title: '.NET Asynchronous Contract',
+              description: 'C# Task-based asynchronous contract accepting high-precision financial decimal.',
+            }
+          },
           { num: 8, code: '}' }
         ]
       },
@@ -565,7 +630,15 @@ export const CODE_DATA: Record<string, LanguageCodeSet> = {
           { num: 3, code: '' },
           { num: 4, code: 'public class LegacyPaymentService' },
           { num: 5, code: '{' },
-          { num: 6, code: '    public Task<bool> MakePaymentAsync(int cents, string currency)' },
+          {
+            num: 6,
+            code: '    public Task<bool> MakePaymentAsync(int cents, string currency)',
+            annotation: {
+              badge: 'Incompatible Method',
+              title: 'Legacy COM / DLL Method',
+              description: 'Consumes integer cents and currency string, returning raw Task<bool>.',
+            }
+          },
           { num: 7, code: '    {' },
           { num: 8, code: '        return Task.FromResult(cents > 0);' },
           { num: 9, code: '    }' },

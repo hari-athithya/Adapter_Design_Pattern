@@ -117,7 +117,7 @@ export const ScenariosQuizView: React.FC = () => {
       </div>
 
       {/* 2. Real-World Enterprise Scenarios */}
-      <div className="bg-[#091018] rounded-xl border border-[#142333] p-5 space-y-4">
+      <div id="module-section-10" className="bg-[#091018] rounded-xl border border-[#142333] p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-[10px] font-mono uppercase text-[#00f0ff] font-bold">CASE STUDIES</div>
@@ -175,7 +175,7 @@ export const ScenariosQuizView: React.FC = () => {
       </div>
 
       {/* 3. Interactive Decision Tree */}
-      <div className="bg-[#091018] rounded-xl border border-[#142333] p-5 space-y-4">
+      <div id="module-section-11" className="bg-[#091018] rounded-xl border border-[#142333] p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[10px] font-mono uppercase text-[#00f0ff] font-bold">ARCHITECTURAL DIAGNOSTIC</div>
@@ -285,7 +285,7 @@ export const ScenariosQuizView: React.FC = () => {
       </div>
 
       {/* 4. Interactive GoF Mastery Quiz */}
-      <div className="bg-[#091018] rounded-xl border border-[#142333] p-5 space-y-5">
+      <div id="module-section-12" className="bg-[#091018] rounded-xl border border-[#142333] p-5 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-[10px] font-mono uppercase text-[#00f0ff] font-bold">KNOWLEDGE CHECK</div>
@@ -396,6 +396,39 @@ export const ScenariosQuizView: React.FC = () => {
               <span>Retry Quiz</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* 5. Module 13: Cheat Sheet Reference */}
+      <div id="module-section-13" className="bg-[#091018] rounded-xl border border-[#142333] p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-mono uppercase text-[#00f0ff] font-bold">RAPID REFERENCE</div>
+            <h2 className="text-sm font-bold text-[#f8fafc]">Adapter Pattern Architectural Cheat Sheet</h2>
+          </div>
+          <span className="text-xs font-mono text-[#64748b]">Module 13</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
+          <div className="p-3.5 bg-[#060a0f] rounded-lg border border-[#1b2b3d] space-y-2">
+            <div className="text-[#38bdf8] font-bold">WHEN TO USE:</div>
+            <ul className="space-y-1.5 text-[11px] text-[#94a3b8] font-sans list-disc list-inside">
+              <li>When you want to use an existing class, but its interface does not match the rest of your code.</li>
+              <li>When you need to create a reusable class that cooperates with unrelated or unforeseen classes.</li>
+              <li>When writing integration layers for multiple payment, SMS, or storage providers.</li>
+              <li>When migrating legacy monolith subsystems to cloud-native microservices.</li>
+            </ul>
+          </div>
+
+          <div className="p-3.5 bg-[#060a0f] rounded-lg border border-[#1b2b3d] space-y-2">
+            <div className="text-[#00f0ff] font-bold">CRITICAL IMPLEMENTATION RULES:</div>
+            <ul className="space-y-1.5 text-[11px] text-[#94a3b8] font-sans list-disc list-inside">
+              <li><strong>Favor Object Composition</strong> over Class Inheritance (Single-responsibility, dynamic dispatch).</li>
+              <li><strong>Catch & Translate Exceptions</strong> to prevent Adaptee vendor types from leaking to callers.</li>
+              <li><strong>Do NOT Add Unrelated Business Logic</strong>; an Adapter should strictly handle interface and data translation.</li>
+              <li><strong>Keep Adapters Lightweight</strong>: Delegate heavy computational work to the underlying service.</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Language, CodeLine } from '../types';
-import { CODE_DATA, JAVA_ANATOMY_POINTS } from '../data/codeData';
+import { Language, CodeLine, AnatomyPoint } from '../types';
+import { CODE_DATA, LANGUAGE_ANATOMY_POINTS, JAVA_ANATOMY_POINTS } from '../data/codeData';
 import { GOF_COMPARISON_MATRIX, CORE_ADVANTAGES, HIDDEN_COSTS } from '../data/gofData';
 import {
   Play,
@@ -35,10 +35,11 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
   // Terminal state
   const [terminalStatus, setTerminalStatus] = useState<'STANDBY' | 'RUNNING' | 'SUCCESS'>('STANDBY');
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
-  const [customAmount, setCustomAmount] = useState<number>(128.5);
+  const [amountInput, setAmountInput] = useState<string>('128.50');
 
   const currentLangData = CODE_DATA[selectedLang];
   const currentFile = currentLangData.files.find((f) => f.id === selectedFileId) || currentLangData.files[0];
+  const currentAnatomyPoints = LANGUAGE_ANATOMY_POINTS[selectedLang] || JAVA_ANATOMY_POINTS;
 
   // Initialize terminal logs on language change
   useEffect(() => {
@@ -54,13 +55,43 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
   const activeLineObj = currentFile.lines.find((l) => l.num === effectiveLineNum);
   const activeAnnotation = activeLineObj?.annotation;
 
+  const handleSelectLanguage = (lang: Language) => {
+    setSelectedLang(lang);
+    setSelectedFileId('adapter');
+    const pts = LANGUAGE_ANATOMY_POINTS[lang] || JAVA_ANATOMY_POINTS;
+    const defLine = pts.find((p) => p.key === 'translation')?.line || 10;
+    setPinnedLineNum(defLine);
+  };
+
+  const handleSelectFile = (fileId: string) => {
+    setSelectedFileId(fileId);
+    const targetFile = currentLangData.files.find((f) => f.id === fileId);
+    if (targetFile) {
+      const firstAnnotated = targetFile.lines.find((l) => l.annotation);
+      if (firstAnnotated) {
+        setPinnedLineNum(firstAnnotated.num);
+      } else if (targetFile.lines.length > 0) {
+        setPinnedLineNum(targetFile.lines[0].num);
+      }
+    }
+  };
+
+  const handleSelectAnatomyPoint = (pt: AnatomyPoint) => {
+    if (selectedFileId !== 'adapter') {
+      setSelectedFileId('adapter');
+    }
+    setPinnedLineNum(pt.line);
+  };
+
   // Run terminal simulation
   const handleRunCode = () => {
+    const customAmount = parseFloat(amountInput) || 0;
     setTerminalStatus('RUNNING');
     setTerminalLogs([`$ ${currentLangData.terminalDemo.compileCmd}`, '>>> Compiling syntax trees and linking modules...']);
 
     setTimeout(() => {
       const cents = Math.round(customAmount * 100);
+      const isApproved = cents > 0;
       let runOutput: string[] = [];
 
       if (selectedLang === 'java') {
@@ -69,8 +100,10 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
           `[Adapter] Initialized with target interface [PaymentProcessor] wrapping [LegacyPaymentService].`,
           `[Client] Invoking PaymentProcessor.pay(amount: $${customAmount.toFixed(2)})`,
           `[Adapter::Transform] Converted ${customAmount.toFixed(2)} USD -> ${cents} Cents.`,
-          `[LegacyPaymentService] makePayment(${cents}, "USD") -> true`,
-          `[Client] Result: PaymentResult[status='SUCCESS'] - Approved!`,
+          `[LegacyPaymentService] makePayment(${cents}, "USD") -> ${isApproved}`,
+          isApproved
+            ? `[Client] Result: PaymentResult[status='SUCCESS'] - Approved!`
+            : `[Client] Result: PaymentResult[status='FAILED'] - Declined: amount must be > 0.`,
         ];
       } else if (selectedLang === 'python') {
         runOutput = [
@@ -78,8 +111,10 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
           `[Adapter] Initialized with target interface [PaymentProcessor] wrapping [LegacyPaymentGateway].`,
           `[Client] Invoking PaymentProcessor.pay(amount: $${customAmount.toFixed(2)})`,
           `[Adapter::Transform] Converted ${customAmount.toFixed(2)} USD -> ${cents} Cents.`,
-          `[LegacySDK] execute_tx(${cents}, currency="USD") -> True`,
-          `[Client] Result: PaymentResult(status='SUCCESS') - Approved!`,
+          `[LegacySDK] execute_tx(${cents}, currency="USD") -> ${isApproved ? 'True' : 'False'}`,
+          isApproved
+            ? `[Client] Result: PaymentResult(status='SUCCESS') - Approved!`
+            : `[Client] Result: PaymentResult(status='FAILED') - Declined: amount must be > 0.`,
         ];
       } else if (selectedLang === 'typescript') {
         runOutput = [
@@ -87,8 +122,10 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
           `[Adapter] Initialized with target interface [PaymentProcessor] wrapping [LegacyBillingSDK].`,
           `[Client] Invoking PaymentProcessor.pay(amount: $${customAmount.toFixed(2)})`,
           `[Adapter::Transform] Converted ${customAmount.toFixed(2)} USD -> ${cents} Cents.`,
-          `[LegacyBillingSDK] chargeCustomer(${cents}, "USD") -> true`,
-          `[Client] Result: PaymentResult{ status: 'SUCCESS', timestamp: ${Date.now()} } - Approved!`,
+          `[LegacyBillingSDK] chargeCustomer(${cents}, "USD") -> ${isApproved}`,
+          isApproved
+            ? `[Client] Result: PaymentResult{ status: 'SUCCESS', timestamp: ${Date.now()} } - Approved!`
+            : `[Client] Result: PaymentResult{ status: 'FAILED', timestamp: ${Date.now()} } - Declined: amount must be > 0.`,
         ];
       } else {
         runOutput = [
@@ -96,14 +133,16 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
           `[Adapter] Initialized with target interface [IPaymentProcessor] wrapping [LegacyPaymentService].`,
           `[Client] Invoking IPaymentProcessor.PayAsync(amount: ${customAmount.toFixed(2)}m)`,
           `[Adapter::Transform] Converted ${customAmount.toFixed(2)} USD -> ${cents} Cents.`,
-          `[LegacyPaymentService] MakePaymentAsync(${cents}, "USD") -> True`,
-          `[Client] Result: PaymentResult { Status = SUCCESS } - Approved!`,
+          `[LegacyPaymentService] MakePaymentAsync(${cents}, "USD") -> ${isApproved ? 'True' : 'False'}`,
+          isApproved
+            ? `[Client] Result: PaymentResult { Status = SUCCESS } - Approved!`
+            : `[Client] Result: PaymentResult { Status = FAILED } - Declined: amount must be > 0.`,
         ];
       }
 
       setTerminalLogs(runOutput);
       setTerminalStatus('SUCCESS');
-    }, 450);
+    }, 380);
   };
 
   const handleCopyCode = () => {
@@ -120,13 +159,29 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
       return <span className="text-[#526071] italic font-mono">{code}</span>;
     }
 
-    // Split words and match keywords
-    const tokens = code.split(/(\s+|[(){}[\];,.<>=:+\-*"/])/);
+    // Match comments, string literals, keywords, classes, numbers, and identifiers
+    const tokenRegex = /(\/\/[^\n]*|#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:public|private|protected|interface|class|implements|extends|final|new|return|int|double|float|boolean|def|from|import|async|await|export|const|let|var|namespace|using|record|this|readonly|decimal|Task|Promise|void|abstract|string|bool)\b|\b(?:PaymentProcessor|PaymentResult|LegacyPaymentService|PaymentAdapter|IPaymentProcessor|LegacyBillingSDK|LegacyPaymentGateway|Math|String|ABC)\b|\b\d+(?:\.\d+)?\b|\s+|[^\s\w])/g;
+
+    const parts = code.match(tokenRegex) || [code];
 
     return (
       <span className="font-mono">
-        {tokens.map((token, idx) => {
+        {parts.map((token, idx) => {
           if (!token) return null;
+          if (token.startsWith('//') || token.startsWith('#')) {
+            return (
+              <span key={idx} className="text-[#526071] italic">
+                {token}
+              </span>
+            );
+          }
+          if (token.startsWith('"') || token.startsWith("'")) {
+            return (
+              <span key={idx} className="text-[#34d399]">
+                {token}
+              </span>
+            );
+          }
           if (
             [
               'public',
@@ -149,6 +204,8 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
               'await',
               'export',
               'const',
+              'let',
+              'var',
               'namespace',
               'using',
               'record',
@@ -157,17 +214,14 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
               'decimal',
               'Task',
               'Promise',
+              'void',
+              'abstract',
+              'string',
+              'bool',
             ].includes(token)
           ) {
             return (
               <span key={idx} className="text-[#38bdf8] font-semibold">
-                {token}
-              </span>
-            );
-          }
-          if (token.startsWith('@')) {
-            return (
-              <span key={idx} className="text-[#f59e0b]">
                 {token}
               </span>
             );
@@ -202,13 +256,6 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
           if (token.match(/^\d+$/) || token.match(/^\d+\.\d+$/)) {
             return (
               <span key={idx} className="text-[#fb923c]">
-                {token}
-              </span>
-            );
-          }
-          if (token.startsWith('"') || token.startsWith("'")) {
-            return (
-              <span key={idx} className="text-[#34d399]">
                 {token}
               </span>
             );
@@ -279,14 +326,7 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
             return (
               <button
                 key={lang}
-                onClick={() => {
-                  setSelectedLang(lang);
-                  setSelectedFileId('adapter');
-                  if (lang === 'java') setPinnedLineNum(20);
-                  else if (lang === 'python') setPinnedLineNum(17);
-                  else if (lang === 'typescript') setPinnedLineNum(15);
-                  else setPinnedLineNum(16);
-                }}
+                onClick={() => handleSelectLanguage(lang)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1.5 ${
                   isSelected
                     ? 'bg-[#00f0ff]/15 text-[#00f0ff] border border-[#00f0ff]/50 shadow-[0_0_12px_rgba(0,240,255,0.2)]'
@@ -334,7 +374,7 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
       </div>
 
       {/* 3. Code Editor & Line Inspector (Side-by-side) */}
-      <div className="bg-[#080d14] rounded-xl border border-[#142333] overflow-hidden shadow-2xl">
+      <div id="module-section-6" className="bg-[#080d14] rounded-xl border border-[#142333] overflow-hidden shadow-2xl">
         {/* File Tabs Bar */}
         <div className="flex items-center gap-1 bg-[#06090e] border-b border-[#14202d] px-2 pt-1.5 overflow-x-auto">
           {currentLangData.files.map((file) => {
@@ -342,7 +382,7 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
             return (
               <button
                 key={file.id}
-                onClick={() => setSelectedFileId(file.id)}
+                onClick={() => handleSelectFile(file.id)}
                 className={`px-3 py-1.5 rounded-t-md text-xs font-mono transition-all flex items-center gap-2 border-t border-x ${
                   isSelected
                     ? 'bg-[#080d14] text-[#00f0ff] font-semibold border-[#142333] border-b-transparent border-t-[#00f0ff]'
@@ -489,12 +529,12 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
                 </div>
 
                 <div className="space-y-1 font-mono text-xs">
-                  {JAVA_ANATOMY_POINTS.map((pt) => {
+                  {currentAnatomyPoints.map((pt) => {
                     const isActive = effectiveLineNum === pt.line;
                     return (
                       <button
                         key={pt.key}
-                        onClick={() => setPinnedLineNum(pt.line)}
+                        onClick={() => handleSelectAnatomyPoint(pt)}
                         className={`w-full text-left px-2.5 py-1.5 rounded transition-all flex items-center justify-between border ${
                           isActive
                             ? 'bg-[#00f0ff]/15 text-[#00f0ff] border-[#00f0ff]/50 font-semibold shadow-[0_0_10px_rgba(0,240,255,0.1)]'
@@ -542,7 +582,7 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
       </div>
 
       {/* 4. Virtual Runtime Terminal Output */}
-      <div className="bg-[#070b11] rounded-xl border border-[#142333] overflow-hidden shadow-xl font-mono">
+      <div id="module-section-5" className="bg-[#070b11] rounded-xl border border-[#142333] overflow-hidden shadow-xl font-mono">
         {/* Terminal Header */}
         <div className="bg-[#05080c] px-4 py-2.5 border-b border-[#14202d] flex flex-wrap items-center justify-between text-xs gap-3">
           <div className="flex items-center gap-2 text-[#00f0ff] font-semibold">
@@ -608,8 +648,8 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
               <input
                 type="number"
                 step="0.01"
-                value={customAmount}
-                onChange={(e) => setCustomAmount(parseFloat(e.target.value) || 0)}
+                value={amountInput}
+                onChange={(e) => setAmountInput(e.target.value)}
                 className="w-16 bg-transparent text-[#00f0ff] outline-none font-mono ml-1"
               />
             </div>
@@ -628,7 +668,7 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
       </div>
 
       {/* 5. Section: GOF ARCHITECTURAL DICHOTOMY */}
-      <div className="space-y-4 pt-4 border-t border-[#14202d]">
+      <div id="module-section-7" className="space-y-4 pt-4 border-t border-[#14202d]">
         <div>
           <div className="text-[11px] font-mono text-[#00f0ff] tracking-wider uppercase font-semibold">
             GOF ARCHITECTURAL DICHOTOMY
@@ -749,7 +789,7 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
       </div>
 
       {/* 6. Section: SYSTEM EVALUATION */}
-      <div className="space-y-4 pt-4 border-t border-[#14202d]">
+      <div id="module-section-8" className="space-y-4 pt-4 border-t border-[#14202d]">
         <div>
           <div className="text-[11px] font-mono text-[#00f0ff] tracking-wider uppercase font-semibold">
             SYSTEM EVALUATION
@@ -799,7 +839,7 @@ export const CodePlaygroundView: React.FC<CodePlaygroundViewProps> = () => {
       </div>
 
       {/* 7. Section: GOF TAXONOMY Comparison Matrix */}
-      <div className="space-y-4 pt-4 border-t border-[#14202d]">
+      <div id="module-section-9" className="space-y-4 pt-4 border-t border-[#14202d]">
         <div>
           <div className="text-[11px] font-mono text-[#00f0ff] tracking-wider uppercase font-semibold">
             GOF TAXONOMY
